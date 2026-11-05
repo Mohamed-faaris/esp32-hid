@@ -19,7 +19,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
       - name: Generate pnpm lockfile
         run: pnpm install --lockfile-only
       - name: Emit lockfile for repository commit
