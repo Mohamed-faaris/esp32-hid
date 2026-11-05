@@ -39,7 +39,7 @@ jobs:
         run: pnpm install --no-frozen-lockfile
       - name: Write disposable build credentials
         run: |
-          printf '%s\n' 'ESP32_API_SECRET=ci-only-secret-not-for-devices' 'ESP32_AP_PASSWORD=ci-only-password' > .env
+          printf '%s\n' 'ESP32_API_SECRET=ci-only-secret-not-for-devices-0123456789abcdef' 'ESP32_AP_PASSWORD=ci-only-password' > .env
       - name: Install pioarduino Core 6.2.0
         run: pipx install pioarduino==6.2.0
       - name: Build firmware
