@@ -33,3 +33,7 @@ Recording stores only commands deliberately sent through this controller API or 
 - Queue and macro sizes are bounded.
 - Remote telemetry requires an HTTPS endpoint and trusted CA certificate; its offline queue is RAM-only.
 - Physical hardware tests are still required for BLE, Wi-Fi coexistence and host reconnection.
+
+## Secure OTA
+
+See ../../docs/ota.md for signed HTTPS manifest generation, trust-anchor configuration and update API. OTA is disabled unless both a trusted CA and an ECDSA public key are compiled into the image. See ../../docs/hardware-validation.md for actual BLE, reconnect, queue and NVS acceptance tests.
