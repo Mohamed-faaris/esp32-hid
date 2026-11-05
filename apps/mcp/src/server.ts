@@ -85,6 +85,24 @@ function createMcp() {
     return { content: [{ type: "text", text: JSON.stringify(result) }] };
   });
 
+  const hidCommandSchema = z.union([
+    z.object({ type: z.literal("type"), value: z.string().min(1).max(96), delay_ms: z.number().int().min(0).max(1000).optional(), jitter_ms: z.number().int().min(0).max(250).optional(), instant: z.boolean().optional() }),
+    z.object({ type: z.literal("press"), value: z.string().min(1).max(16) }),
+    z.object({ type: z.literal("hotkey"), value: z.string().min(1).max(48) }),
+    z.object({ type: z.literal("sleep"), ms: z.number().int().min(0).max(60000) }),
+    z.object({ type: z.literal("mouse_move"), dx: z.number().int().min(-100).max(100), dy: z.number().int().min(-100).max(100), wheel: z.number().int().min(-100).max(100).optional() }),
+    z.object({ type: z.literal("mouse_click"), button: z.enum(["left","right","middle","back","forward"]).default("left") }),
+    z.object({ type: z.literal("mouse_wheel"), delta: z.number().int().min(-100).max(100) })
+  ]);
+
+  server.registerTool("hid_sequence", {
+    description: "Queue 1–24 ordered keyboard, mouse and sleep commands. All actions use the device's normal bounded sequential queue.",
+    inputSchema: z.object({ commands: z.array(hidCommandSchema).min(1).max(24) })
+  }, async ({ commands }) => {
+    const result = await device().sequence(commands as Array<Record<string, unknown>>);
+    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  });
+
   server.registerTool("queue_control", {
     description: "Pause, resume or stop the HID command queue. Stop clears and releases all controls.",
     inputSchema: z.object({ action: z.enum(["pause","resume","stop"]) })
