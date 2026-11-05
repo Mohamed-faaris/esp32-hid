@@ -47,8 +47,11 @@ void telemetryPublish(const char* eventName, const char* detail) {
 static void telemetryTask(void*) {
   TelemetryEvent event;
   for (;;) {
+    if (!telemetryOn || WiFi.status() != WL_CONNECTED) {
+      vTaskDelay(pdMS_TO_TICKS(1000));
+      continue; // Keep pending events in the bounded RAM queue while offline.
+    }
     if (xQueueReceive(telemetryQueue, &event, pdMS_TO_TICKS(1000)) != pdTRUE) continue;
-    if (!telemetryOn || WiFi.status() != WL_CONNECTED) continue;
     if (strlen(HID_TELEMETRY_ROOT_CA) < 100) continue; // No insecure TLS fallback.
     JsonDocument body;
     body["device"] = "ESP32-HID";
