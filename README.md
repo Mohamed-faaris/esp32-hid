@@ -42,7 +42,7 @@ The current EspBle release documents Arduino-ESP32 Core 3.2.0 as the minimum for
     git clone https://github.com/Mohamed-faaris/esp32-hid.git
     cd esp32-hid
     cp .env.example .env
-    # Set ESP32_API_SECRET, ESP32_AP_PASSWORD and MCP_AUTH_TOKEN.
+    # Set ESP32_API_SECRET and MCP_AUTH_TOKEN to independent 32-byte random values (`openssl rand -hex 32`); ESP32_AP_PASSWORD must be at least 8 characters.
     pnpm install
     pnpm dev
 
