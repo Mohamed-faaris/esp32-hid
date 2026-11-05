@@ -6,6 +6,7 @@
 #include <ArduinoJson.h>
 #include <BleKeyboard.h>
 #include "config.h"
+#include "telemetry.h"
 
 #if __has_include("secrets.h")
 #include "secrets.h"
@@ -63,6 +64,7 @@ static void logMessage(LogLevel level, const String& message) {
   String line = String("[") + levelName(level) + "] " + message;
   Serial.println(line);
   websocket.broadcastTXT(line);
+  telemetryPublish("device_log", message.c_str());
 }
 static bool authorized() {
   String received = http.header("Authorization");
@@ -265,11 +267,10 @@ static void telemetryConfigRoute() {
   JsonDocument json;
   if (deserializeJson(json, http.arg("plain"))) { sendError(400, "invalid_json"); return; }
   String endpoint = json["endpoint"] | "";
-  if (endpoint.length() && !endpoint.startsWith("https://")) { sendError(400, "https_required"); return; }
-  preferences.putString("telemetryUrl", endpoint);
-  preferences.putString("telemetryKey", String((const char*)(json["api_key"] | "")));
-  preferences.putBool("telemetryOn", json["enabled"] | false);
-  http.send(501, "application/json", "{\"stored\":true,\"delivery\":\"not_implemented_yet\"}");
+  String apiKey = json["api_key"] | "";
+  bool enabled = json["enabled"] | false;
+  if (!telemetryConfigure(endpoint, apiKey, enabled)) { sendError(400, "https_endpoint_and_key_required"); return; }
+  http.send(200, "application/json", "{\"ok\":true,\"tls\":\"requires HID_TELEMETRY_ROOT_CA\"}");
 }
 static void setupRoutes() {
   const char* headers[] = {"Authorization"}; http.collectHeaders(headers, 1);
@@ -331,6 +332,7 @@ void setup() {
   stationSsid = preferences.getString("staSsid", HID_STA_SSID);
   stationPassword = preferences.getString("staPass", HID_STA_PASSWORD);
   queueHandle = xQueueCreate(config::COMMAND_QUEUE_CAPACITY, sizeof(Command));
+  telemetryBegin();
   keyboard.begin();
   WiFi.mode(WIFI_AP_STA); WiFi.softAP(HID_AP_SSID, HID_AP_PASSWORD);
   if (stationSsid.length()) WiFi.begin(stationSsid.c_str(), stationPassword.c_str());
