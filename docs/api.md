@@ -65,3 +65,10 @@ Recording stores commands deliberately submitted through this ESP32 controller o
 - 409: recording state conflict or macro storage/index limit exceeded.
 - 429: bounded command queue full.
 - 502: control-plane proxy cannot reach the device.
+
+## Secure OTA
+
+- GET /api/ota/status — requires the device bearer token; reports whether OTA is configured, current version and update state.
+- POST /api/ota/update — requires the device bearer token and an idle command queue; body: {"manifest_url":"https://updates.example.com/manifest.json"}. Returns HTTP 202 after the signed update worker starts.
+
+The device fetches releases over its configured station connection. It rejects an update while the command queue is active/paused or macro recording/replay is in progress. See docs/ota.md for release signing and physical rollback acceptance tests.

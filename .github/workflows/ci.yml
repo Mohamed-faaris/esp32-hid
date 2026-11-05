@@ -24,6 +24,12 @@ jobs:
         run: pnpm --filter @esp32-hid/web build
       - name: Test
         run: pnpm test
+      - name: Test signed OTA manifest tooling
+        run: python -m unittest discover -s scripts -p 'test_*.py'
+      - name: Validate Python and hardware scripts
+        run: python -m py_compile scripts/create_ota_manifest.py scripts/test_create_ota_manifest.py scripts/ble-host-verify.py
+      - name: Validate hardware smoke script
+        run: node --check scripts/hardware-smoke-test.mjs
 
   firmware:
     runs-on: ubuntu-latest

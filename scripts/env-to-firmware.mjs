@@ -30,6 +30,8 @@ const lines = [
   "#define HID_STA_SSID " + cppString(values.ESP32_STA_SSID || ""),
   "#define HID_STA_PASSWORD " + cppString(values.ESP32_STA_PASSWORD || ""),
   "#define HID_TELEMETRY_ROOT_CA " + cppString(values.ESP32_TELEMETRY_ROOT_CA || ""),
+  "#define HID_OTA_ROOT_CA " + cppString(values.ESP32_OTA_ROOT_CA || ""),
+  "#define HID_OTA_PUBLIC_KEY " + cppString(values.ESP32_OTA_PUBLIC_KEY || ""),
   ""
 ];
 const output = resolve(root, "firmware/esp32/include/secrets.h");
