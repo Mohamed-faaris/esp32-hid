@@ -413,13 +413,8 @@ void otaConfirmPendingBoot(bool startupHealthy) {
   }
   if (!startupHealthy) {
     const uint32_t previousAddress = otaPrefs.getUInt("previous_addr", 0);
-    const esp_partition_t* previous = esp_partition_find_first(
-      ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, nullptr
-    );
-    while (previous && previous->address != previousAddress) {
-      previous = esp_partition_next(previous);
-    }
-    if (previous && previous->address == previousAddress) {
+    const esp_partition_t* previous = findAppPartitionAt(previousAddress);
+    if (previous) {
       esp_ota_set_boot_partition(previous);
       delay(150);
       ESP.restart();
