@@ -52,7 +52,7 @@ def input_device_name(fd: int) -> str:
     try:
         import fcntl
         fcntl.ioctl(fd, request, raw, True)
-        return raw.split(b"\\0", 1)[0].decode("utf-8", errors="replace")
+        return raw.split(b"\0", 1)[0].decode("utf-8", errors="replace")
     except OSError:
         return ""
 
