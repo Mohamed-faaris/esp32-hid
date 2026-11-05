@@ -121,6 +121,12 @@ importers:
 
   packages/device-client:
     devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.5
+      tsx:
+        specifier: ^4.20.6
+        version: 4.23.15
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
