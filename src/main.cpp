@@ -137,9 +137,14 @@ static void waitInterruptible(uint32_t milliseconds) {
 static void executorTask(void*) {
   Command command;
   for (;;) {
+    if (stopRequested) {
+      keyboard.releaseAll();
+      stopRequested = false;
+      clearQueue();
+      logMessage(LogLevel::WARN, "Queue stopped and cleared");
+    }
     if (paused) { vTaskDelay(pdMS_TO_TICKS(30)); continue; }
     if (xQueueReceive(queueHandle, &command, pdMS_TO_TICKS(100)) != pdTRUE) continue;
-    if (stopRequested) { stopRequested = false; continue; }
     if (!keyboard.isConnected()) { logMessage(LogLevel::WARN, "Command skipped: no BLE host connected"); continue; }
     switch (command.type) {
       case CmdType::SLEEP: waitInterruptible(command.delayMs); break;
