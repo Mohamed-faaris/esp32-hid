@@ -1,0 +1,12 @@
+{
+  "name":"@esp32-hid/mcp","private":true,"type":"module",
+  "scripts":{"dev":"tsx src/server.ts --transport=http","start":"tsx src/server.ts --transport=http","stdio":"tsx src/server.ts --transport=stdio","typecheck":"tsc --noEmit","lint":"tsc --noEmit"},
+  "dependencies":{
+    "@esp32-hid/device-client":"workspace:*",
+    "@modelcontextprotocol/node":"^2.0.0",
+    "@modelcontextprotocol/server":"^2.0.0",
+    "dotenv":"^17.2.3",
+    "zod":"^4.1.12"
+  },
+  "devDependencies":{"@types/node":"^22.0.0","tsx":"^4.20.6","typescript":"^5.9.3"}
+}

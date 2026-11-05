@@ -1,36 +1,67 @@
-# HTTP API
+# ESP32 device API
 
-Base URL: http://192.168.4.1 in AP mode or the DHCP address in STA mode.
+Base URL defaults to http://192.168.4.1 in AP mode.
 
-Protected routes require Authorization: Bearer <HID_API_SECRET>. Status and Bluetooth status are read-only and public.
+Protected routes require:
 
-## Keyboard commands
+    Authorization: Bearer <ESP32_API_SECRET>
+    Content-Type: application/json
 
-- POST /api/keyboard/type: {"type":"type","value":"Hello","delay_ms":35,"jitter_ms":0,"instant":false}
-- POST /api/keyboard/press: {"type":"press","value":"ENTER"}
-- POST /api/keyboard/hotkey: {"type":"hotkey","value":"CTRL+SHIFT+ESC"}
-- POST /api/keyboard/sleep: {"type":"sleep","ms":1000}
-- POST /api/keyboard/sequence: {"commands":[{"type":"type","value":"hello"},{"type":"sleep","ms":500},{"type":"press","value":"ENTER"}]}
+## Status and queue
 
-## Queue and configuration
-
-- POST /api/wifi/config: {\"ssid\":\"your-wifi\",\"password\":\"your-password\"} stores STA credentials in NVS and reconnects. AP remains active.
-
-- POST /api/queue/pause, /api/queue/resume, /api/queue/stop
 - GET /api/status
-- POST /api/keyboard/config: {"delay_ms":40,"jitter_ms":10}
-- POST /api/logs/config: raw body INFO, DEBUG, TRACE, WARN, ERROR, or NONE
-- WebSocket logs: ws://<device-ip>:81/
-- POST /api/telemetry/config accepts {\"enabled\":true,\"endpoint\":\"https://...\",\"api_key\":\"...\"}. Outbound delivery runs in a separate task with a bounded RAM queue and up to three retries. Configure HID_TELEMETRY_ROOT_CA in include/secrets.h; events remain queued while Wi-Fi is offline. Events are dropped after retry exhaustion or if the bounded queue fills. The firmware sends ESP32-generated diagnostic events only, never host physical keyboard input or typed text.
+- GET /api/queue
+- POST /api/queue/pause
+- POST /api/queue/resume
+- POST /api/queue/stop — clears pending commands and releases keyboard and mouse.
+
+## Keyboard
+
+- POST /api/keyboard/type — {"type":"type","value":"Hello","delay_ms":35,"jitter_ms":0,"instant":false}
+- POST /api/keyboard/press — {"type":"press","value":"ENTER"}
+- POST /api/keyboard/hotkey — {"type":"hotkey","value":"CTRL+SHIFT+ESC"}
+- POST /api/keyboard/sleep — {"type":"sleep","ms":1000}
+- POST /api/keyboard/sequence — {"commands":[{"type":"type","value":"hello"},{"type":"sleep","ms":500},{"type":"press","value":"ENTER"}]}
+- POST /api/keyboard/config — {"delay_ms":40,"jitter_ms":10}
+
+## Mouse
+
+All coordinates are relative. Firmware clamps each x/y delta to ±100 counts.
+
+- POST /api/mouse/move — {"dx":20,"dy":-10,"wheel":0}
+- POST /api/mouse/click — {"button":"left"} (left/right/middle/back/forward)
+- POST /api/mouse/wheel — {"delta":5}
+
+## Modes, logging and network
+
+- POST /api/mode — {"mode":"NORMAL"}. Modes: NORMAL, TYPING, INSTANT, SEQUENCE, RANDOMIZED, QUIET, DIAGNOSTIC.
+- GET /api/logs — bounded log ring buffer, requires authentication.
+- POST /api/logs/config — {"level":"INFO"}. Levels: NONE, ERROR, WARN, INFO, DEBUG, TRACE.
+- WebSocket: ws://<device-ip>:81/. Send the device secret as the first message; wait for AUTH_OK before logs.
+- POST /api/wifi/config — {"ssid":"network","password":"password"}.
+- POST /api/telemetry/config — {"enabled":true,"endpoint":"https://example.net/events","api_key":"..."}.
+
+## Macro recording
+
+- POST /api/recording/start — {"name":"demo"}
+- POST /api/recording/stop
+- GET /api/recording/status
+- GET /api/macros
+- POST /api/macros/play — {"name":"demo"}
+- POST /api/macros/delete — {"name":"demo"}
+
+Recording stores commands deliberately submitted through this ESP32 controller only. It does not capture physical keyboard input on the connected computer.
 
 ## Bluetooth
 
-The ESP32 is a BLE HID peripheral. Pairing and reconnect are initiated from the computer Bluetooth settings. The ESP32 cannot force a remote host to reconnect or enumerate the host's saved bond list. GET /api/bluetooth/status reports connection state.
+- GET /api/bluetooth/status
+- POST /api/bluetooth/reconnect — restarts peripheral advertising. The host OS remains responsible for reconnecting.
 
-## Serial CLI
+## Errors
 
-help, status, pause, resume, stop, type <text>, press <key>, hotkey <A+B>.
-
-## Security
-
-The initial shared bearer secret travels over local HTTP without encryption. Use only on a trusted isolated LAN; do not port-forward. No host-side physical keyboard capture is implemented.
+- 400: malformed JSON, invalid command or out-of-range input.
+- 401: missing or invalid bearer secret.
+- 404: unknown route or macro.
+- 409: recording state conflict or macro storage/index limit exceeded.
+- 429: bounded command queue full.
+- 502: control-plane proxy cannot reach the device.

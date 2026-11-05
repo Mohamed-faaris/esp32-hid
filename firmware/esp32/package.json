@@ -1,0 +1,8 @@
+{
+  "name":"@esp32-hid/firmware","private":true,
+  "scripts":{
+    "build":"node ../../scripts/env-to-firmware.mjs && pio run -e esp32dev",
+    "upload":"node ../../scripts/env-to-firmware.mjs && pio run -e esp32dev -t upload",
+    "monitor":"pio device monitor -b 115200"
+  }
+}

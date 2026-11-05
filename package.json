@@ -1,0 +1,13 @@
+{
+  "name":"esp32-hid-workspace","private":true,"packageManager":"pnpm@10.20.0",
+  "engines":{"node":">=22","pnpm":">=10"},
+  "scripts":{
+    "dev":"dotenv -e .env -- turbo run dev --parallel",
+    "build":"turbo run build","lint":"turbo run lint","typecheck":"turbo run typecheck",
+    "cli":"pnpm --filter @esp32-hid/cli start","mcp":"pnpm --filter @esp32-hid/mcp start",
+    "mcp:stdio":"pnpm --filter @esp32-hid/mcp stdio",
+    "firmware:build":"pnpm --filter @esp32-hid/firmware build",
+    "firmware:upload":"pnpm --filter @esp32-hid/firmware upload"
+  },
+  "devDependencies":{"dotenv":"^17.2.3","dotenv-cli":"^11.0.0","turbo":"^2.5.0","typescript":"^5.9.3"}
+}

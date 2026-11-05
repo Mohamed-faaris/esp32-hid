@@ -1,0 +1,11 @@
+{
+  "$schema":"https://turborepo.dev/schema.json",
+  "globalEnv":["ESP32_API_URL","ESP32_API_SECRET","ESP32_API_TIMEOUT_MS","MCP_HOST","MCP_PORT","MCP_AUTH_TOKEN","WEB_PORT","LOG_LEVEL"],
+  "tasks":{
+    "dev":{"cache":false,"persistent":true},
+    "build":{"dependsOn":["^build"],"outputs":[".next/**","!.next/cache/**","dist/**"]},
+    "lint":{"dependsOn":["^lint"],"outputs":[]},
+    "typecheck":{"dependsOn":["^typecheck"],"outputs":[]},
+    "test":{"dependsOn":["^test"],"outputs":[]}
+  }
+}
