@@ -90,6 +90,10 @@ export class DeviceClient {
     return this.request("keyboard/hotkey", { method: "POST", body: { type: "hotkey", value } });
   }
 
+  sequence(commands: Array<Record<string, unknown>>) {
+    return this.request("keyboard/sequence", { method: "POST", body: { commands } });
+  }
+
   mouseMove(dx: number, dy: number, wheel = 0) {
     return this.request("mouse/move", { method: "POST", body: { dx, dy, wheel } });
   }
