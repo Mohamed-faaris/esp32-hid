@@ -20,6 +20,18 @@ Software builds and API tests do not prove BLE HID behavior. Run this procedure 
 
 The BLE keyboard and mouse readiness flags must both be true in `GET /api/status`. Pairing is host initiated; the device cannot force a host reconnect.
 
+## Automated host-side BLE event check (Linux)
+
+After pairing, run this on the Linux desktop that is connected to the ESP32:
+
+```sh
+pnpm hardware:ble
+```
+
+The helper opens the paired device's Linux `/dev/input/event*` nodes, sends the text `HID` through the device API, and moves the pointer slightly. It passes only after the Linux input subsystem receives the corresponding H/I/D key-down events and non-zero relative X/Y mouse events. The current user needs read access to the input event devices (typically membership in the `input` group). The text is sent to the currently focused application; use a harmless text editor.
+
+Run it once after initial pairing and again after manually disconnecting/reconnecting from the host Bluetooth settings. This checks the actual host-side reports, not just the firmware's BLE-ready flags.
+
 ## Automated device-side checks
 
 Run:
