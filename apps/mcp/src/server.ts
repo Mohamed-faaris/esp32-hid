@@ -219,8 +219,8 @@ if (transport === "stdio") {
   const host = process.env.MCP_HOST ?? "127.0.0.1";
   const port = Number(process.env.MCP_PORT ?? 3333);
   const token = process.env.MCP_AUTH_TOKEN ?? "";
-  if (!token || token.startsWith("replace-with-")) {
-    throw new Error("Set MCP_AUTH_TOKEN in the root .env before starting MCP HTTP transport.");
+  if (!token || token.startsWith("replace-with-") || token.length < 32) {
+    throw new Error("Set MCP_AUTH_TOKEN to at least 32 random characters in the root .env. Generate one with: openssl rand -hex 32");
   }
   const mcpHandler = createMcpHandler(() => createMcp());
   const nodeHandler = toNodeHandler(mcpHandler);
