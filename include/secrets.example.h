@@ -7,3 +7,7 @@
 #define HID_AP_PASSWORD "replace-with-a-strong-password"
 #define HID_STA_SSID ""
 #define HID_STA_PASSWORD ""
+
+// Paste the PEM root CA certificate for your telemetry HTTPS server here.
+// Remote telemetry stays disabled when this is empty; never use insecure TLS.
+#define HID_TELEMETRY_ROOT_CA ""
