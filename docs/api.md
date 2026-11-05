@@ -14,6 +14,8 @@ Protected routes require Authorization: Bearer <HID_API_SECRET>. Status and Blue
 
 ## Queue and configuration
 
+- POST /api/wifi/config: {\"ssid\":\"your-wifi\",\"password\":\"your-password\"} stores STA credentials in NVS and reconnects. AP remains active.
+
 - POST /api/queue/pause, /api/queue/resume, /api/queue/stop
 - GET /api/status
 - POST /api/keyboard/config: {"delay_ms":40,"jitter_ms":10}
