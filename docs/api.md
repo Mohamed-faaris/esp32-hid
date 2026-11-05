@@ -62,6 +62,6 @@ Recording stores commands deliberately submitted through this ESP32 controller o
 - 400: malformed JSON, invalid command or out-of-range input.
 - 401: missing or invalid bearer secret.
 - 404: unknown route or macro.
-- 409: recording state conflict.
+- 409: recording state conflict or macro storage/index limit exceeded.
 - 429: bounded command queue full.
 - 502: control-plane proxy cannot reach the device.
