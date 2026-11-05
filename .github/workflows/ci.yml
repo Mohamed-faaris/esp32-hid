@@ -22,6 +22,8 @@ jobs:
         run: pnpm typecheck
       - name: Build web
         run: pnpm --filter @esp32-hid/web build
+      - name: Test
+        run: pnpm test
 
   firmware:
     runs-on: ubuntu-latest
