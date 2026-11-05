@@ -6,3 +6,5 @@
 #define HID_STA_SSID ""
 #define HID_STA_PASSWORD ""
 #define HID_TELEMETRY_ROOT_CA ""
+#define HID_OTA_ROOT_CA ""
+#define HID_OTA_PUBLIC_KEY ""
