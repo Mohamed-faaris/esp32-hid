@@ -1,6 +1,6 @@
 # Secure OTA update
 
-Secure OTA is isolated on the `feature/secure-ota` branch and its own pull request. It is disabled by default until both the HTTPS CA bundle and the ECDSA public key are configured in the firmware build environment.
+Secure OTA is available as an optional firmware feature. It is disabled by default until both the HTTPS CA bundle and the ECDSA public key are configured in the firmware build environment.
 
 ## Trust model
 
