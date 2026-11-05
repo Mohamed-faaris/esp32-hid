@@ -16,7 +16,8 @@
     "mcp:stdio": "pnpm --filter @esp32-hid/mcp stdio",
     "firmware:build": "pnpm --filter @esp32-hid/firmware build",
     "firmware:upload": "pnpm --filter @esp32-hid/firmware upload",
-    "hardware:smoke": "node scripts/hardware-smoke-test.mjs"
+    "hardware:smoke": "node scripts/hardware-smoke-test.mjs",
+    "hardware:ble": "python3 scripts/ble-host-verify.py"
   },
   "devDependencies": {
     "dotenv": "^17.2.3",
