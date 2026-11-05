@@ -19,7 +19,7 @@ Protected routes require Authorization: Bearer <HID_API_SECRET>. Status and Blue
 - POST /api/keyboard/config: {"delay_ms":40,"jitter_ms":10}
 - POST /api/logs/config: raw body INFO, DEBUG, TRACE, WARN, ERROR, or NONE
 - WebSocket logs: ws://<device-ip>:81/
-- POST /api/telemetry/config stores endpoint credentials, but outbound delivery is not implemented in this firmware revision and returns HTTP 501.
+- POST /api/telemetry/config accepts {\"enabled\":true,\"endpoint\":\"https://...\",\"api_key\":\"...\"}. Outbound delivery runs in a separate task with a bounded RAM queue and up to three retries. Configure HID_TELEMETRY_ROOT_CA in include/secrets.h; events remain queued while Wi-Fi is offline. Events are dropped after retry exhaustion or if the bounded queue fills. The firmware sends ESP32-generated diagnostic events only, never host physical keyboard input or typed text.
 
 ## Bluetooth
 
