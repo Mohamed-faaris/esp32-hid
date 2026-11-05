@@ -44,6 +44,7 @@ The current EspBle release documents Arduino-ESP32 Core 3.2.0 as the minimum for
     cp .env.example .env
     # Set ESP32_API_SECRET, ESP32_AP_PASSWORD and MCP_AUTH_TOKEN.
     pnpm install
+    pnpm test
     pnpm dev
 
 Turborepo starts the web dashboard and MCP HTTP service in parallel:
