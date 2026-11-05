@@ -215,9 +215,8 @@ if (transport === "stdio") {
     }
     if (!validateHost(request, response)) return;
     const hostHeader = request.headers.host ?? host;
-    const originHeaders = request.headers.origin
-      ? { Origin: request.headers.origin }
-      : {};
+    const originHeaders = new Headers();
+    if (request.headers.origin) originHeaders.set("Origin", request.headers.origin);
     const originRequest = new Request("http://" + hostHeader + "/", { headers: originHeaders });
     const rejectedOrigin = originValidationResponse(originRequest, localhostAllowedOrigins());
     if (rejectedOrigin) {
