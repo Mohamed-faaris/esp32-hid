@@ -110,4 +110,4 @@ See docs/README.md, docs/api.md, docs/architecture.md, docs/security.md, docs/re
 
 ## Status
 
-The implementation is on feature/monorepo-control-plane as a draft PR. It still requires CI and physical ESP32-WROOM-32 validation before release. OTA remains separately isolated and is not release-ready.
+The implementation is on feature/monorepo-control-plane as draft PR #1. GitHub Actions currently passes the workspace typecheck, web production build and ESP32 firmware build. Physical ESP32-WROOM-32 validation is still required for BLE pairing, keyboard/mouse reports, reconnect, Wi-Fi coexistence, queue timing and macro persistence. OTA is not implemented in this branch and is not release-ready.
