@@ -115,4 +115,4 @@ See docs/README.md, docs/api.md, docs/architecture.md, docs/security.md, docs/re
 
 ## Status
 
-The implementation is on feature/monorepo-control-plane as draft PR #1. GitHub Actions currently passes the workspace typecheck, web production build and ESP32 firmware build. Physical ESP32-WROOM-32 validation is still required for BLE pairing, keyboard/mouse reports, reconnect, Wi-Fi coexistence, queue timing and macro persistence. Signed HTTPS OTA is implemented behind explicit build-time trust configuration on the separate OTA change. Physical rollback/power-loss validation remains outstanding; see docs/ota.md.
+Core firmware, web/CLI/MCP clients and device-client contract tests are merged into main. CI validates typechecking, web build and firmware compilation. Physical ESP32-WROOM-32 validation is still required for BLE pairing, keyboard/mouse reports, reconnect, Wi-Fi coexistence, queue timing and macro persistence. OTA is disabled until trust anchors are configured and remains subject to power-loss and rollback acceptance tests; see docs/ota.md.
