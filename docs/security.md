@@ -17,3 +17,6 @@ Recording starts only after explicit user action and stores commands generated b
 
 ## HID safety
 No stealth, detection bypass or covert key capture is implemented. Mouse deltas are bounded. STOP releases all active keyboard/mouse state.
+
+## Credential handling limits
+Use at least 32 random characters for ESP32_API_SECRET and MCP_AUTH_TOKEN; use a WPA2-valid AP password of at least 8 characters. Generate both API tokens independently with `openssl rand -hex 32`. The firmware API secret is compiled into the device image, so physical access to firmware or an extracted flash image can expose it. The device currently stores Station Wi-Fi credentials and telemetry credentials in ESP32 Preferences/NVS; NVS encryption is not configured by this project. Treat the device and its flash as sensitive. Rotate affected credentials after device loss or firmware-image disclosure.
