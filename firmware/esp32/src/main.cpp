@@ -80,7 +80,10 @@ static const char* commandName(CommandType type) {
 
 static void sendLogToAuthenticatedClients(const String& line) {
   for (uint8_t id = 0; id < 32; ++id) {
-    if (websocketAuthenticated[id]) websocket.sendTXT(id, line);
+    if (websocketAuthenticated[id]) {
+      String payload = line;
+      websocket.sendTXT(id, payload);
+    }
   }
 }
 
