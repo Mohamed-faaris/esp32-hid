@@ -25,7 +25,7 @@ The BLE keyboard and mouse readiness flags must both be true in `GET /api/status
 Run:
 
 ```sh
-pnpm hardware:smoke -- record hw-smoke
+pnpm hardware:smoke record hw-smoke
 ```
 
 This checks that both BLE interfaces report ready, that pause preserves queued commands, resume drains them, stop clears the queue, and an explicitly-created keyboard/mouse macro is saved and indexed in NVS.
@@ -33,7 +33,7 @@ This checks that both BLE interfaces report ready, that pause preserves queued c
 Next, power-cycle the ESP32 (remove USB power for several seconds), reconnect the host, then run:
 
 ```sh
-pnpm hardware:smoke -- verify hw-smoke
+pnpm hardware:smoke verify hw-smoke
 ```
 
 This requires the macro to still be listed after reboot and to replay successfully. The test sends visible text beginning with `ESP32-HID-` and moves the mouse by a small relative delta; do not run while a sensitive text field or destructive UI control is focused.
@@ -43,7 +43,7 @@ This requires the macro to still be listed after reboot and to replay successful
 Record the results in your release checklist:
 
 - [ ] BLE HID device appears as a keyboard and mouse.
-- [ ] Type `ESP32-HID-MANUAL-TEST` into a harmless text editor and verify exact output.
+- [ ] Verify the automated macro text (`ESP32-HID-hw-smoke`) and `QUEUE-PAUSE-RESUME` appear in a harmless text editor. Also type `ESP32-HID-MANUAL-TEST` manually and verify exact output.
 - [ ] Verify mouse relative movement and wheel movement in a harmless empty area.
 - [ ] Disconnect from host Bluetooth; verify advertising resumes; reconnect from host settings.
 - [ ] Repeat keyboard and mouse checks after reconnect.
