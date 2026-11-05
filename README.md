@@ -16,7 +16,7 @@ This is a pnpm/Turborepo monorepo. Every control surface calls the same firmware
 - Serial CLI, Node CLI, Next.js dashboard and MCP tools.
 - Configurable log levels, bounded event ring buffer, optional HTTPS telemetry.
 - Root .env is the single operator-managed configuration source.
-- Future features and OTA remain isolated on feature branches and PRs.
+- Secure OTA is implemented separately; see docs/ota.md. Physical acceptance tests remain mandatory before production use.
 
 ## Architecture
 
@@ -80,6 +80,10 @@ Monochrome shadcn-inspired dashboard with keyboard, mouse, queue, settings, macr
     pnpm cli -- macro play demo
     pnpm cli -- bluetooth-advertise
 
+### Physical hardware validation
+
+On a paired Linux host run `pnpm hardware:ble` to verify actual keyboard and relative mouse input events. Run `pnpm hardware:smoke record hw-smoke`, power-cycle the board, then `pnpm hardware:smoke verify hw-smoke` to verify NVS macro persistence. See `docs/hardware-validation.md`.
+
 ### MCP
 
 - pnpm dev starts the authenticated local Streamable HTTP MCP endpoint.
@@ -107,8 +111,8 @@ The ESP32 is a BLE HID peripheral. Pairing is initiated from the host OS. After 
 
 ## Documentation
 
-See docs/README.md, docs/api.md, docs/architecture.md, docs/security.md, docs/recording.md, docs/ROADMAP.md and AGENT_HANDOFF.md.
+See docs/README.md, docs/api.md, docs/architecture.md, docs/security.md, docs/recording.md, docs/hardware-validation.md, docs/ota.md, docs/ROADMAP.md and AGENT_HANDOFF.md.
 
 ## Status
 
-The implementation is on feature/monorepo-control-plane as draft PR #1. GitHub Actions currently passes the workspace typecheck, web production build and ESP32 firmware build. Physical ESP32-WROOM-32 validation is still required for BLE pairing, keyboard/mouse reports, reconnect, Wi-Fi coexistence, queue timing and macro persistence. OTA is not implemented in this branch and is not release-ready.
+The implementation is on feature/monorepo-control-plane as draft PR #1. GitHub Actions currently passes the workspace typecheck, web production build and ESP32 firmware build. Physical ESP32-WROOM-32 validation is still required for BLE pairing, keyboard/mouse reports, reconnect, Wi-Fi coexistence, queue timing and macro persistence. Signed HTTPS OTA is implemented behind explicit build-time trust configuration on the separate OTA change. Physical rollback/power-loss validation remains outstanding; see docs/ota.md.
