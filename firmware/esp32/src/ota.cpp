@@ -71,7 +71,9 @@ bool parseVersion(const String& value, uint32_t parts[3]) {
     for (size_t i = start; i < end; ++i) {
       const char c = value[i];
       if (c < '0' || c > '9') return false;
-      number = number * 10U + static_cast<uint32_t>(c - '0');
+      const uint32_t digit = static_cast<uint32_t>(c - '0');
+      if (number > (UINT32_MAX - digit) / 10U) return false;
+      number = number * 10U + digit;
     }
     parts[part] = number;
     start = end + 1;
@@ -156,7 +158,8 @@ bool parseManifest(const String& raw, Manifest& manifest) {
   JsonDocument doc;
   if (deserializeJson(doc, raw)) return false;
 
-  if ((doc["schema"] | 0) != 1) return false;
+  if (!doc["schema"].is<int>() || (doc["schema"].as<int>() != 1)) return false;
+  if (!doc["security_version"].is<uint32_t>() || !doc["image_size"].is<uint32_t>()) return false;
   if (String(doc["board"] | "") != kBoard) return false;
   if (String(doc["channel"] | "") != kChannel) return false;
 
@@ -387,52 +390,74 @@ void otaConfirmPendingBoot(bool startupHealthy) {
   const String pendingVersion = otaPrefs.getString("pending_version", "");
   if (!pendingVersion.length()) return;
 
+  const uint32_t previousAddress = otaPrefs.getUInt("previous_addr", 0);
+  const uint32_t pendingSecurity = otaPrefs.getUInt("pending_security", config::FIRMWARE_SECURITY_VERSION);
   const esp_partition_t* running = esp_ota_get_running_partition();
-  esp_ota_img_states_t state = ESP_OTA_IMG_UNDEFINED;
-  const esp_err_t stateResult = esp_ota_get_state_partition(running, &state);
 
-  // A bootloader without rollback support must not silently accept the image.
-  if (stateResult != ESP_OK || state == ESP_OTA_IMG_UNDEFINED) {
-    const uint32_t previousAddress = otaPrefs.getUInt("previous_addr", 0);
-    const esp_partition_t* previous = findAppPartitionAt(previousAddress);
-    if (previous) {
-      esp_ota_set_boot_partition(previous);
-      delay(150);
-      ESP.restart();
-    }
+  auto clearPending = []() {
     otaPrefs.remove("pending_version");
     otaPrefs.remove("pending_security");
     otaPrefs.remove("previous_addr");
+  };
+  auto restorePrevious = [previousAddress]() {
+    const esp_partition_t* previous = findAppPartitionAt(previousAddress);
+    if (!previous) return false;
+    if (esp_ota_set_boot_partition(previous) != ESP_OK) return false;
+    delay(150);
+    ESP.restart();
+    return true;
+  };
+  auto acceptPending = [&]() {
+    otaPrefs.putString("version", pendingVersion);
+    otaPrefs.putUInt("security", pendingSecurity);
+    clearPending();
+    setState("confirmed");
+  };
+
+  // If the bootloader already rolled back, do not apply pending metadata to
+  // the old application or it could create a false version/security record.
+  if (running && previousAddress != 0 && running->address == previousAddress) {
+    clearPending();
+    setState("rolled_back");
+    return;
+  }
+
+  esp_ota_img_states_t state = ESP_OTA_IMG_UNDEFINED;
+  const esp_err_t stateResult = esp_ota_get_state_partition(running, &state);
+
+  if (stateResult == ESP_OK && state == ESP_OTA_IMG_PENDING_VERIFY) {
+    if (!startupHealthy) {
+      esp_ota_mark_app_invalid_rollback_and_reboot();
+      return;
+    }
+    if (esp_ota_mark_app_valid_cancel_rollback() != ESP_OK) {
+      esp_ota_mark_app_invalid_rollback_and_reboot();
+      return;
+    }
+    acceptPending();
+    return;
+  }
+
+  // Some Arduino bootloaders do not expose rollback state. In that case we
+  // can still recover from a detected startup failure, but cannot guarantee
+  // recovery from a crash before the application starts running.
+  if (stateResult != ESP_OK || state == ESP_OTA_IMG_UNDEFINED) {
+    if (!startupHealthy) {
+      if (restorePrevious()) return;
+      clearPending();
+      setState("rollback_unavailable");
+      return;
+    }
+    acceptPending();
+    return;
+  }
+
+  if (!startupHealthy) {
+    if (restorePrevious()) return;
+    clearPending();
     setState("rollback_unavailable");
     return;
   }
 
-  if (state == ESP_OTA_IMG_PENDING_VERIFY && !startupHealthy) {
-    esp_ota_mark_app_invalid_rollback_and_reboot();
-    return;
-  }
-  if (!startupHealthy) {
-    const uint32_t previousAddress = otaPrefs.getUInt("previous_addr", 0);
-    const esp_partition_t* previous = findAppPartitionAt(previousAddress);
-    if (previous) {
-      esp_ota_set_boot_partition(previous);
-      delay(150);
-      ESP.restart();
-    }
-    setState("health_check_failed");
-    return;
-  }
-
-  if (state == ESP_OTA_IMG_PENDING_VERIFY
-      && esp_ota_mark_app_valid_cancel_rollback() != ESP_OK) {
-    esp_ota_mark_app_invalid_rollback_and_reboot();
-    return;
-  }
-
-  otaPrefs.putString("version", pendingVersion);
-  otaPrefs.putUInt("security", otaPrefs.getUInt("pending_security", config::FIRMWARE_SECURITY_VERSION));
-  otaPrefs.remove("pending_version");
-  otaPrefs.remove("pending_security");
-  otaPrefs.remove("previous_addr");
-  setState("confirmed");
+  acceptPending();
 }
