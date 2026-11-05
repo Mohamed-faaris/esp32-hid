@@ -267,6 +267,24 @@ static void typingConfigRoute() {
   preferences.putUInt("typeDelay", delay); preferences.putUShort("jitter", jitter);
   http.send(200, "application/json", "{\"ok\":true}");
 }
+static void wifiConfigRoute() {
+  if (!checkAuth()) return;
+  JsonDocument json;
+  if (deserializeJson(json, http.arg("plain"))) { sendError(400, "invalid_json"); return; }
+  String ssid = json["ssid"] | "";
+  String password = json["password"] | "";
+  if (ssid.length() > 32 || password.length() > 63 || (ssid.length() && password.length() < 8)) {
+    sendError(400, "invalid_wifi_credentials"); return;
+  }
+  stationSsid = ssid;
+  stationPassword = password;
+  preferences.putString("staSsid", stationSsid);
+  preferences.putString("staPass", stationPassword);
+  WiFi.disconnect(false, false);
+  if (stationSsid.length()) WiFi.begin(stationSsid.c_str(), stationPassword.c_str());
+  http.send(200, "application/json", "{\"ok\":true,\"mode\":\"AP+STA\"}");
+}
+
 static void telemetryConfigRoute() {
   if (!checkAuth()) return;
   JsonDocument json;
@@ -291,6 +309,7 @@ static void setupRoutes() {
   http.on("/api/logs/config", HTTP_POST, logConfigRoute);
   http.on("/api/keyboard/config", HTTP_POST, typingConfigRoute);
   http.on("/api/telemetry/config", HTTP_POST, telemetryConfigRoute);
+  http.on("/api/wifi/config", HTTP_POST, wifiConfigRoute);
   http.on("/api/bluetooth/status", HTTP_GET, [](){
     JsonDocument json; json["connected"] = keyboard.isConnected();
     json["role"] = "BLE HID peripheral";
