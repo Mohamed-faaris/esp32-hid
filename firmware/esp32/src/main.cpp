@@ -563,9 +563,13 @@ static void sequenceRoute() {
     sendError(400, "invalid_sequence"); return;
   }
   JsonArray items = doc["commands"].as<JsonArray>();
-  if (!items.size() || items.size() > config::MAX_MACRO_COMMANDS
-      || uxQueueSpacesAvailable(commandQueue) < items.size()) {
-    sendError(429, "invalid_sequence_or_queue_full"); return;
+  if (!items.size() || items.size() > config::MAX_MACRO_COMMANDS) {
+    sendError(400, "invalid_sequence_size");
+    return;
+  }
+  if (uxQueueSpacesAvailable(commandQueue) < items.size()) {
+    sendError(429, "queue_full");
+    return;
   }
   Command parsed[config::MAX_MACRO_COMMANDS];
   size_t count = 0;
