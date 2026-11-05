@@ -39,3 +39,8 @@ Continue ESP32-HID as a pnpm/Turborepo monorepo for an original ESP32-WROOM-32. 
 - Verify WebSocket auth and telemetry CA/retry.
 - Verify MCP HTTP guards and stdio in a real MCP host.
 - Review legacy OTA: image signature verification, anti-rollback and boot health rollback are mandatory.
+
+## Latest CI baseline
+- As of 2026-11-05, PR #1 CI passed: workspace typecheck, Next.js production build and PlatformIO firmware build.
+- This is compile-time validation only. Do not claim hardware validation until a physical ESP32-WROOM-32 is tested against at least one desktop host.
+- Known follow-up: add a committed pnpm lockfile and switch CI to frozen installs when it can be generated and verified.
