@@ -7,6 +7,7 @@
 #include <EspBle.h>
 #include "config.h"
 #include "telemetry.h"
+#include "ota.h"
 #include "secrets.h"
 
 enum class LogLevel : uint8_t { NONE, ERROR, WARN, INFO, DEBUG, TRACE };
@@ -30,6 +31,8 @@ static WebSocketsServer websocket(81);
 static Preferences prefs;
 static QueueHandle_t commandQueue = nullptr;
 static bool queuePaused = false;
+static bool bleInitialized = false;
+static bool apStarted = false;
 static bool stopRequested = false;
 static bool commandActive = false;
 static bool sleepStarted = false;
@@ -533,6 +536,10 @@ static void statusRoute() {
   doc["log_level"] = levelName(logLevel);
   doc["mode"] = modeName;
   doc["recording"] = recording;
+  doc["ota_enabled"] = otaReady();
+  doc["ota_busy"] = otaIsBusy();
+  doc["ota_state"] = otaState();
+  doc["firmware_version"] = otaCurrentVersion();
   sendJson(200, doc);
 }
 
@@ -846,6 +853,42 @@ static void websocketEvent(uint8_t id, WStype_t type, uint8_t* payload, size_t l
   }
 }
 
+static void otaStatusRoute() {
+  if (!requireAuth(true)) return;
+  JsonDocument doc;
+  doc["enabled"] = otaReady();
+  doc["busy"] = otaIsBusy();
+  doc["state"] = otaState();
+  doc["version"] = otaCurrentVersion();
+  sendJson(200, doc);
+}
+
+static void otaStartRoute() {
+  if (!requireAuth()) return;
+  const size_t queued = uxQueueMessagesWaiting(commandQueue) + (commandActive ? 1 : 0);
+  if (queued != 0 || queuePaused || recording || replayingMacro) {
+    sendError(409, "queue_not_idle");
+    return;
+  }
+  JsonDocument doc;
+  if (deserializeJson(doc, http.arg("plain"))) {
+    sendError(400, "invalid_json");
+    return;
+  }
+  const String manifestUrl = String(doc["manifest_url"] | "");
+  if (!otaReady()) {
+    sendError(503, "ota_not_configured");
+    return;
+  }
+  ble.hidKeyboard().releaseAll();
+  ble.hidMouse().releaseAll();
+  if (!otaStartUpdate(manifestUrl)) {
+    sendError(503, "ota_start_failed");
+    return;
+  }
+  http.send(202, "application/json", "{\\"started\\":true,\\"state\\":\\"starting\\"}");
+}
+
 static void setupRoutes() {
   const char* headers[] = {"Authorization"};
   http.collectHeaders(headers, 1);
@@ -881,6 +924,8 @@ static void setupRoutes() {
   http.on("/api/macros/delete", HTTP_POST, macroDeleteRoute);
   http.on("/api/wifi/config", HTTP_POST, wifiConfigRoute);
   http.on("/api/telemetry/config", HTTP_POST, telemetryConfigRoute);
+  http.on("/api/ota/status", HTTP_GET, otaStatusRoute);
+  http.on("/api/ota/update", HTTP_POST, otaStartRoute);
   http.on("/api/bluetooth/status", HTTP_GET, []() {
     JsonDocument doc;
     doc["keyboard_ready"] = ble.hidKeyboard().ready();
@@ -1035,13 +1080,14 @@ void setup() {
   if (!ble.begin(bleConfig)) {
     Serial.printf("BLE initialization failed: %s\n", ble.lastErrorDetail().c_str());
   } else {
+    bleInitialized = true;
     ble.onDisconnected([](const EspBleConnection&) { ble.advertising().start(); });
     ble.advertising().setName(bleConfig.deviceName);
     ble.advertising().start();
   }
 
   WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP(HID_AP_SSID, HID_AP_PASSWORD);
+  apStarted = WiFi.softAP(HID_AP_SSID, HID_AP_PASSWORD);
   if (staSsid.length()) WiFi.begin(staSsid.c_str(), staPassword.c_str());
 
   telemetryBegin();
@@ -1049,6 +1095,9 @@ void setup() {
   http.begin();
   websocket.begin();
   websocket.onEvent(websocketEvent);
+  otaBegin();
+  otaConfirmPendingBoot(bleInitialized && apStarted && commandQueue != nullptr
+    && WiFi.softAPIP() != IPAddress(0, 0, 0, 0));
   logEvent(LogLevel::INFO, String("Access point available at ") + WiFi.softAPIP().toString());
 }
 
