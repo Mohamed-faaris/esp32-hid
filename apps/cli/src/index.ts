@@ -28,6 +28,19 @@ program.command("type").argument("<text>").option("--instant").option("--delay <
   .action((text, opts) => run(() => device().typeText(text, { instant: Boolean(opts.instant), delay_ms: Number(opts.delay) })));
 program.command("key").argument("<key>").action(key => run(() => device().pressKey(key)));
 program.command("hotkey").argument("<combination>").action(value => run(() => device().hotkey(value)));
+program.command("sequence").argument("<json>").description("Queue an ordered JSON array of HID commands")
+  .action((raw: string) => {
+    try {
+      const commands = JSON.parse(raw) as Array<Record<string, unknown>>;
+      if (!Array.isArray(commands) || commands.length < 1 || commands.length > 24) {
+        throw new Error("sequence must be a JSON array with 1–24 commands");
+      }
+      return run(() => device().sequence(commands));
+    } catch (error) {
+      process.stderr.write("error: " + (error instanceof Error ? error.message : String(error)) + "\n");
+      process.exitCode = 1;
+    }
+  });
 program.command("mode").argument("<name>").action(name => run(() => device().setMode(name.toUpperCase())));
 program.command("logs").action(() => run(() => device().logs()));
 program.command("log-level").argument("<level>")
