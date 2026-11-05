@@ -107,10 +107,16 @@ static bool authorized() {
   return received.length() == expected.length() && received.equals(expected);
 }
 
-static bool requireAuth() {
-  if (authorized()) return true;
-  http.send(401, "application/json", "{\"error\":\"unauthorized\"}");
-  return false;
+static bool requireAuth(bool allowDuringOta = false) {
+  if (!authorized()) {
+    http.send(401, "application/json", "{\"error\":\"unauthorized\"}");
+    return false;
+  }
+  if (otaIsBusy() && !allowDuringOta) {
+    http.send(503, "application/json", "{\"error\":\"ota_in_progress\"}");
+    return false;
+  }
+  return true;
 }
 
 static void sendJson(int status, JsonDocument& doc) {
@@ -943,6 +949,10 @@ static void setupRoutes() {
 }
 
 static void serialCommand(const String& line) {
+  if (otaIsBusy() && line != "status") {
+    Serial.println("ERR ota in progress");
+    return;
+  }
   if (line == "help") {
     Serial.println("status | type <text> | key <key> | hotkey <CTRL+SHIFT+ESC>");
     Serial.println("mouse move <dx> <dy> | mouse click <left|right|middle> | mouse wheel <delta>");
