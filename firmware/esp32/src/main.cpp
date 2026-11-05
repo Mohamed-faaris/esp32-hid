@@ -249,6 +249,21 @@ static bool appendMacroAction(const Command& command) {
   return true;
 }
 
+static bool appendMacroBatch(const Command* commands, size_t count) {
+  if (!recording || replayingMacro) return true;
+  const String originalJson = macroJson;
+  const uint8_t originalCount = macroCount;
+  for (size_t i = 0; i < count; ++i) {
+    if (!appendMacroAction(commands[i])) {
+      macroJson = originalJson;
+      macroCount = originalCount;
+      macroOverflow = true;
+      return false;
+    }
+  }
+  return true;
+}
+
 static bool enqueue(const Command& command, bool shouldRecord = true) {
   if (!commandQueue || uxQueueSpacesAvailable(commandQueue) == 0) return false;
   if (shouldRecord && recording && !replayingMacro) {
@@ -293,6 +308,7 @@ static bool sendHotkey(const String& expression) {
     const int separator = expression.indexOf('+', start);
     String part = expression.substring(start, separator < 0 ? expression.length() : separator);
     part.trim();
+    if (!part.length()) return false;
     String upper = part;
     upper.toUpperCase();
     if (upper == "CTRL" || upper == "CONTROL") modifiers |= 0x01;
@@ -300,6 +316,7 @@ static bool sendHotkey(const String& expression) {
     else if (upper == "ALT") modifiers |= 0x04;
     else if (upper == "GUI" || upper == "WIN" || upper == "CMD") modifiers |= 0x08;
     else if (part.length() == 1) {
+      if (usage != 0) return false;
       const char c = part[0];
       if (c >= 'a' && c <= 'z') usage = static_cast<uint8_t>(0x04 + c - 'a');
       else if (c >= 'A' && c <= 'Z') { usage = static_cast<uint8_t>(0x04 + c - 'A'); modifiers |= 0x02; }
@@ -307,6 +324,7 @@ static bool sendHotkey(const String& expression) {
       else if (c == '0') usage = 0x27;
       else return false;
     } else {
+      if (usage != 0) return false;
       String key = part;
       key.toUpperCase();
       if (key == "ENTER") usage = 0x28;
@@ -324,6 +342,9 @@ static bool sendHotkey(const String& expression) {
       else if (key == "DOWN") usage = 0x51;
       else if (key == "UP") usage = 0x52;
       else if (key.length() >= 2 && key[0] == 'F') {
+        for (size_t i = 1; i < key.length(); ++i) {
+          if (!isDigit(key[i])) return false;
+        }
         const int number = key.substring(1).toInt();
         if (number >= 1 && number <= 12) usage = static_cast<uint8_t>(0x39 + number);
         else return false;
@@ -332,6 +353,7 @@ static bool sendHotkey(const String& expression) {
     if (separator < 0) break;
     start = separator + 1;
   }
+  if (expression.endsWith("+")) return false;
   return usage != 0 && ble.hidKeyboard().tapUsage(usage, modifiers);
 }
 
@@ -349,28 +371,37 @@ static bool recordStart(const String& name) {
 static bool recordStop() {
   if (!recording) return false;
   recording = false;
+  bool saved = false;
   if (macroCount && !macroOverflow) {
     const String serialized = String("{\"commands\":[") + macroJson + "]}";
-    prefs.putString(macroName.c_str(), serialized);
-    String names = prefs.getString("macroNames", "");
-    bool alreadyListed = false;
-    int start = 0;
-    while (start < static_cast<int>(names.length())) {
-      const int end = names.indexOf('|', start);
-      const String existing = names.substring(start, end < 0 ? names.length() : end);
-      if (existing == macroName) alreadyListed = true;
-      if (end < 0) break;
-      start = end + 1;
-    }
-    if (!alreadyListed && names.length() < 180) {
-      if (names.length()) names += "|";
-      names += macroName;
-      prefs.putString("macroNames", names);
+    if (prefs.putString(macroName.c_str(), serialized) > 0) {
+      String names = prefs.getString("macroNames", "");
+      bool alreadyListed = false;
+      int start = 0;
+      while (start < static_cast<int>(names.length())) {
+        const int end = names.indexOf('|', start);
+        const String existing = names.substring(start, end < 0 ? names.length() : end);
+        if (existing == macroName) alreadyListed = true;
+        if (end < 0) break;
+        start = end + 1;
+      }
+      if (alreadyListed) {
+        saved = true;
+      } else {
+        const size_t addedLength = (names.length() ? 1 : 0) + macroName.length();
+        if (names.length() + addedLength <= 180) {
+          if (names.length()) names += "|";
+          names += macroName;
+          saved = prefs.putString("macroNames", names) > 0;
+        }
+        if (!saved) prefs.remove(macroName.c_str());
+      }
     }
   }
-  const bool saved = macroCount > 0 && !macroOverflow;
-  logEvent(macroOverflow ? LogLevel::WARN : LogLevel::INFO,
-    macroOverflow ? "Macro exceeded storage limits and was discarded" : "Command recording stopped");
+  logEvent(saved ? LogLevel::INFO : LogLevel::WARN,
+    saved ? "Command recording stopped and macro saved"
+          : (macroOverflow ? "Macro exceeded storage limits or index capacity"
+                           : "Macro could not be saved"));
   return saved;
 }
 
@@ -515,7 +546,13 @@ static void commandRoute() {
   if (!requireAuth()) return;
   JsonDocument doc;
   if (deserializeJson(doc, http.arg("plain"))) { sendError(400, "invalid_json"); return; }
-  if (!queueRouteCommand(doc.as<JsonVariantConst>())) { sendError(400, "invalid_or_full_queue"); return; }
+  Command command;
+  if (!parseCommand(doc.as<JsonVariantConst>(), command)) { sendError(400, "invalid_command"); return; }
+  if (!enqueue(command)) {
+    sendError(recording && macroOverflow ? 409 : 429,
+      recording && macroOverflow ? "macro_limit_exceeded" : "queue_full");
+    return;
+  }
   http.send(202, "application/json", "{\"queued\":true}");
 }
 
@@ -526,9 +563,13 @@ static void sequenceRoute() {
     sendError(400, "invalid_sequence"); return;
   }
   JsonArray items = doc["commands"].as<JsonArray>();
-  if (!items.size() || items.size() > config::MAX_MACRO_COMMANDS
-      || uxQueueSpacesAvailable(commandQueue) < items.size()) {
-    sendError(429, "invalid_sequence_or_queue_full"); return;
+  if (!items.size() || items.size() > config::MAX_MACRO_COMMANDS) {
+    sendError(400, "invalid_sequence_size");
+    return;
+  }
+  if (uxQueueSpacesAvailable(commandQueue) < items.size()) {
+    sendError(429, "queue_full");
+    return;
   }
   Command parsed[config::MAX_MACRO_COMMANDS];
   size_t count = 0;
@@ -538,8 +579,12 @@ static void sequenceRoute() {
     }
     ++count;
   }
+  if (!appendMacroBatch(parsed, count)) {
+    sendError(409, "macro_limit_exceeded");
+    return;
+  }
   for (size_t i = 0; i < count; ++i) {
-    if (!enqueue(parsed[i])) { sendError(429, "queue_full"); return; }
+    if (!enqueue(parsed[i], false)) { sendError(429, "queue_full"); return; }
   }
   JsonDocument response;
   response["queued"] = true;
@@ -565,7 +610,13 @@ static void mouseActionRoute(const char* action) {
   if (!strcmp(action, "move")) doc["type"] = "mouse_move";
   else if (!strcmp(action, "click")) doc["type"] = "mouse_click";
   else doc["type"] = "mouse_wheel";
-  if (!queueRouteCommand(doc.as<JsonVariantConst>())) { sendError(400, "invalid_mouse_command_or_queue_full"); return; }
+  Command command;
+  if (!parseCommand(doc.as<JsonVariantConst>(), command)) { sendError(400, "invalid_mouse_command"); return; }
+  if (!enqueue(command)) {
+    sendError(recording && macroOverflow ? 409 : 429,
+      recording && macroOverflow ? "macro_limit_exceeded" : "queue_full");
+    return;
+  }
   http.send(202, "application/json", "{\"queued\":true}");
 }
 
@@ -686,9 +737,13 @@ static void macroPlayRoute() {
   JsonDocument macro;
   if (deserializeJson(macro, saved) || !macro["commands"].is<JsonArray>()) { sendError(500, "stored_macro_invalid"); return; }
   JsonArray items = macro["commands"].as<JsonArray>();
-  if (!items.size() || items.size() > config::MAX_MACRO_COMMANDS
-      || uxQueueSpacesAvailable(commandQueue) < items.size()) {
-    sendError(429, "queue_full_or_macro_empty"); return;
+  if (!items.size() || items.size() > config::MAX_MACRO_COMMANDS) {
+    sendError(500, "stored_macro_invalid");
+    return;
+  }
+  if (uxQueueSpacesAvailable(commandQueue) < items.size()) {
+    sendError(429, "queue_full");
+    return;
   }
   Command commands[config::MAX_MACRO_COMMANDS];
   size_t count = 0;
@@ -846,7 +901,8 @@ static void serialCommand(const String& line) {
   if (line == "help") {
     Serial.println("status | type <text> | key <key> | hotkey <CTRL+SHIFT+ESC>");
     Serial.println("mouse move <dx> <dy> | mouse click <left|right|middle> | mouse wheel <delta>");
-    Serial.println("pause | resume | stop | record start <name> | record stop | macro list | macro play <name>");
+    Serial.println("pause | resume | stop | advertise");
+    Serial.println("record start <name> | record stop | macro list | macro play <name> | macro delete <name>");
     return;
   }
   if (line == "status") {
@@ -860,6 +916,32 @@ static void serialCommand(const String& line) {
   if (line == "pause") { startPause(); return; }
   if (line == "resume") { resumeQueue(); return; }
   if (line == "stop") { stopRequested = true; return; }
+  if (line == "advertise") {
+    ble.advertising().start();
+    Serial.println("OK advertising restarted; host controls reconnect");
+    return;
+  }
+  if (line.startsWith("macro delete ")) {
+    const String name = line.substring(13);
+    if (!safeMacroName(name)) { Serial.println("ERR invalid macro name"); return; }
+    prefs.remove(name.c_str());
+    const String names = prefs.getString("macroNames", "");
+    String updated;
+    int start = 0;
+    while (start < static_cast<int>(names.length())) {
+      const int end = names.indexOf('|', start);
+      const String item = names.substring(start, end < 0 ? names.length() : end);
+      if (item.length() && item != name) {
+        if (updated.length()) updated += "|";
+        updated += item;
+      }
+      if (end < 0) break;
+      start = end + 1;
+    }
+    prefs.putString("macroNames", updated);
+    Serial.println("OK macro deleted");
+    return;
+  }
   if (line.startsWith("record start ")) {
     if (!recordStart(line.substring(13))) Serial.println("ERR invalid name or recording active");
     return;

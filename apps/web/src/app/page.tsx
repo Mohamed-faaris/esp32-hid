@@ -97,7 +97,7 @@ export default function Home() {
     socket.onclose = () => setWsConnected(false);
     socket.onerror = () => setWsConnected(false);
     return () => socket.close();
-  }, [token, status?.ap_ip]);
+  }, [token, status?.ap_ip, status?.sta_connected, status?.sta_ip]);
 
   async function run(action: () => Promise<unknown>, success: string) {
     setBusy(true);
@@ -172,7 +172,7 @@ export default function Home() {
               <button className="btn" onClick={() => void refresh()}>Connect</button>
               <button className="btn" disabled={buttonDisabled} onClick={() => void run(() => api("bluetooth/reconnect", {}), "BLE advertising restarted. Pair/reconnect from the host OS.")}>Re-advertise</button>
             </div>
-            <p className="mt-2 text-xs text-zinc-500">Stored in this browser tab's session storage. The server proxy forwards it to the ESP32 and does not persist it.</p>
+            <p className="mt-2 text-xs text-zinc-500">Stored only in this tab's session storage. HTTP calls use the local web proxy; the live log socket authenticates directly with the ESP32.</p>
           </div>
 
           <div className="mb-6 flex flex-wrap gap-2 md:hidden">
@@ -239,7 +239,7 @@ export default function Home() {
               <label className="mb-2 block text-xs text-zinc-400">Macro name</label>
               <input className="field mb-3" value={macroName} onChange={event => setMacroName(event.target.value)} maxLength={14}/>
               <div className="flex flex-wrap gap-2">
-                <button className="btn btn-primary" disabled={buttonDisabled || !macroName} onClick={() => void run(() => api("recording/start", { name: macroName }), "Recording started.")}><Activity size={14}/>Start recording</button>
+                <button className="btn btn-primary" disabled={buttonDisabled || !/^[A-Za-z0-9_-]{1,14}$/.test(macroName)} onClick={() => void run(() => api("recording/start", { name: macroName }), "Recording started.")}><Activity size={14}/>Start recording</button>
                 <button className="btn" disabled={buttonDisabled} onClick={() => void run(() => api("recording/stop"), "Recording stopped.")}><Save size={14}/>Stop & save</button>
               </div>
               <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-400">State: {status?.recording ? "Recording" : "Idle"}</div>
@@ -248,9 +248,16 @@ export default function Home() {
               <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Saved macros</h2><button className="btn" disabled={!token} onClick={() => void refresh()}><RefreshCw size={13}/>Refresh</button></div>
               <div className="space-y-2">
                 {macros.length === 0 && <p className="text-sm text-zinc-500">No macros saved.</p>}
-                {macros.map(name => <div key={name} className="flex items-center justify-between rounded-lg border border-zinc-800 p-3">
-                  <span className="font-mono text-sm">{name}</span>
-                  <button className="btn" disabled={buttonDisabled} onClick={() => void run(() => api("macros/play", { name }), "Macro queued.")}><Play size={13}/>Play</button>
+                {macros.map(name => <div key={name} className="flex items-center justify-between gap-2 rounded-lg border border-zinc-800 p-3">
+                  <span className="min-w-0 truncate font-mono text-sm">{name}</span>
+                  <div className="flex shrink-0 gap-2">
+                    <button className="btn" disabled={buttonDisabled} onClick={() => void run(() => api("macros/play", { name }), "Macro queued.")}><Play size={13}/>Play</button>
+                    <button className="btn btn-danger" disabled={buttonDisabled} onClick={() => {
+                      if (window.confirm("Delete macro '" + name + "'?")) {
+                        void run(() => api("macros/delete", { name }), "Macro deleted.");
+                      }
+                    }}>Delete</button>
+                  </div>
                 </div>)}
               </div>
             </div>
