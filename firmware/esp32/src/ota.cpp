@@ -12,6 +12,7 @@
 #include <mbedtls/base64.h>
 #include <mbedtls/md.h>
 #include <mbedtls/pk.h>
+#include <new>
 
 #include "config.h"
 #include "secrets.h"
@@ -166,7 +167,8 @@ bool parseManifest(const String& raw, Manifest& manifest) {
   manifest.sha256 = String(doc["sha256"] | "");
   manifest.signature = String(doc["signature"] | "");
 
-  if (!parseVersion(manifest.version, (uint32_t[3]){})) return false;
+  uint32_t parsedVersion[3] = {};
+  if (!parseVersion(manifest.version, parsedVersion)) return false;
   if (!secureUrl(manifest.imageUrl)) return false;
   if (manifest.imageSize < 1024 || manifest.sha256.length() != 64) return false;
   if (!cleanAscii(manifest.signature, 256)) return false;
@@ -175,6 +177,23 @@ bool parseManifest(const String& raw, Manifest& manifest) {
     if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return false;
   }
   return verifyManifestSignature(manifest);
+}
+
+const esp_partition_t* findAppPartitionAt(uint32_t address) {
+  esp_partition_iterator_t iterator = esp_partition_find(
+    ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, nullptr
+  );
+  const esp_partition_t* found = nullptr;
+  while (iterator) {
+    const esp_partition_t* candidate = esp_partition_get(iterator);
+    if (candidate && candidate->address == address) {
+      found = candidate;
+      break;
+    }
+    iterator = esp_partition_next(iterator);
+  }
+  if (iterator) esp_partition_iterator_release(iterator);
+  return found;
 }
 
 bool downloadManifest(const String& url, Manifest& manifest) {
@@ -375,13 +394,8 @@ void otaConfirmPendingBoot(bool startupHealthy) {
   // A bootloader without rollback support must not silently accept the image.
   if (stateResult != ESP_OK || state == ESP_OTA_IMG_UNDEFINED) {
     const uint32_t previousAddress = otaPrefs.getUInt("previous_addr", 0);
-    const esp_partition_t* previous = esp_partition_find_first(
-      ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, nullptr
-    );
-    while (previous && previous->address != previousAddress) {
-      previous = esp_partition_next(previous);
-    }
-    if (previous && previous->address == previousAddress) {
+    const esp_partition_t* previous = findAppPartitionAt(previousAddress);
+    if (previous) {
       esp_ota_set_boot_partition(previous);
       delay(150);
       ESP.restart();
