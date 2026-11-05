@@ -892,7 +892,7 @@ static void otaStartRoute() {
     sendError(503, "ota_start_failed");
     return;
   }
-  http.send(202, "application/json", "{\\"started\\":true,\\"state\\":\\"starting\\"}");
+  http.send(202, "application/json", "{\"started\":true,\"state\":\"starting\"}");
 }
 
 static void setupRoutes() {
