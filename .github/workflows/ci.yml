@@ -17,9 +17,11 @@ jobs:
         with:
           node-version: 22
       - name: Install workspace
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Typecheck
         run: pnpm typecheck
+      - name: Test signed OTA manifest tooling
+        run: python -m unittest discover -s scripts -p 'test_*.py'
       - name: Build web
         run: pnpm --filter @esp32-hid/web build
 
@@ -34,7 +36,7 @@ jobs:
         with:
           node-version: 22
       - name: Install workspace
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Write disposable build credentials
         run: |
           printf '%s\n' 'ESP32_API_SECRET=ci-only-secret-not-for-devices-0123456789abcdef' 'ESP32_AP_PASSWORD=ci-only-password' > .env
