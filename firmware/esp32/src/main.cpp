@@ -309,7 +309,21 @@ static bool sendHotkey(const String& expression) {
     } else {
       String key = part;
       key.toUpperCase();
-      if (key.length() >= 2 && key[0] == 'F') {
+      if (key == "ENTER") usage = 0x28;
+      else if (key == "ESC" || key == "ESCAPE") usage = 0x29;
+      else if (key == "BACKSPACE") usage = 0x2A;
+      else if (key == "TAB") usage = 0x2B;
+      else if (key == "SPACE") usage = 0x2C;
+      else if (key == "HOME") usage = 0x4A;
+      else if (key == "PAGEUP") usage = 0x4B;
+      else if (key == "DELETE" || key == "DEL") usage = 0x4C;
+      else if (key == "END") usage = 0x4D;
+      else if (key == "PAGEDOWN") usage = 0x4E;
+      else if (key == "RIGHT") usage = 0x4F;
+      else if (key == "LEFT") usage = 0x50;
+      else if (key == "DOWN") usage = 0x51;
+      else if (key == "UP") usage = 0x52;
+      else if (key.length() >= 2 && key[0] == 'F') {
         const int number = key.substring(1).toInt();
         if (number >= 1 && number <= 12) usage = static_cast<uint8_t>(0x39 + number);
         else return false;
@@ -339,8 +353,16 @@ static bool recordStop() {
     const String serialized = String("{\"commands\":[") + macroJson + "]}";
     prefs.putString(macroName.c_str(), serialized);
     String names = prefs.getString("macroNames", "");
-    const String marker = String("|") + macroName + "|";
-    if (names.indexOf(marker) < 0 && names.length() < 180) {
+    bool alreadyListed = false;
+    int start = 0;
+    while (start < static_cast<int>(names.length())) {
+      const int end = names.indexOf('|', start);
+      const String existing = names.substring(start, end < 0 ? names.length() : end);
+      if (existing == macroName) alreadyListed = true;
+      if (end < 0) break;
+      start = end + 1;
+    }
+    if (!alreadyListed && names.length() < 180) {
       if (names.length()) names += "|";
       names += macroName;
       prefs.putString("macroNames", names);
