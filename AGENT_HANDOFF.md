@@ -30,6 +30,7 @@ Continue ESP32-HID as a pnpm/Turborepo monorepo for an original ESP32-WROOM-32. 
 - No stealth or security-evasion.
 - Future work uses separate branches and PRs; no destructive rewrites or auto-merge.
 - Test physical WROOM-32 and document host pairing behaviour using docs/hardware-validation.md.
+- Run `pnpm hardware:ble` on a paired Linux host to observe real keyboard/mouse input events.
 - Run `pnpm hardware:smoke record hw-smoke`, power-cycle, then `pnpm hardware:smoke verify hw-smoke`.
 - Validate signed HTTPS OTA, hash/signature rejection, interrupted-power safety and rollback on real board; see docs/ota.md.
 
@@ -46,3 +47,4 @@ Continue ESP32-HID as a pnpm/Turborepo monorepo for an original ESP32-WROOM-32. 
 - As of 2026-11-05, PR #1 CI passed: workspace typecheck, Next.js production build and PlatformIO firmware build.
 - This is compile-time validation only. Do not claim hardware validation until a physical ESP32-WROOM-32 is tested against at least one desktop host.
 - pnpm-lock.yaml is committed and CI uses `pnpm install --frozen-lockfile`.
+- `pnpm test` covers the shared device-client API contracts.
