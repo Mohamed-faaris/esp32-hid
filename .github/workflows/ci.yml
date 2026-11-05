@@ -1,0 +1,45 @@
+name: Monorepo CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install workspace
+        run: pnpm install --no-frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Build web
+        run: pnpm --filter @esp32-hid/web build
+
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install workspace
+        run: pnpm install --no-frozen-lockfile
+      - name: Write disposable build credentials
+        run: |
+          printf '%s\n' 'ESP32_API_SECRET=ci-only-secret-not-for-devices' 'ESP32_AP_PASSWORD=ci-only-password' > .env
+      - name: Install pioarduino Core 6.2.0
+        run: pipx install pioarduino==6.2.0
+      - name: Build firmware
+        run: pnpm firmware:build
