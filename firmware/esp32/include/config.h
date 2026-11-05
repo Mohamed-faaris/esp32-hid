@@ -9,4 +9,6 @@ constexpr size_t MAX_MACRO_COMMANDS = 24;
 constexpr uint32_t DEFAULT_KEY_INTERVAL_MS = 35;
 constexpr uint16_t MAX_RANDOM_JITTER_MS = 250;
 constexpr int8_t MAX_MOUSE_DELTA = 100;
+constexpr char FIRMWARE_VERSION[] = "1.0.0";
+constexpr uint32_t FIRMWARE_SECURITY_VERSION = 1;
 }
