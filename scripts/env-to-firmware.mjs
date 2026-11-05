@@ -9,8 +9,14 @@ const values = dotenv.parse(await readFile(resolve(root, ".env")).catch(() => {
 }));
 for (const key of ["ESP32_API_SECRET", "ESP32_AP_PASSWORD"]) {
   if (!values[key] || values[key].startsWith("replace-with-")) {
-    throw new Error("Set a strong value for " + key + " in the root .env.");
+    throw new Error("Set a real value for " + key + " in the root .env.");
   }
+}
+if (values.ESP32_API_SECRET.length < 32) {
+  throw new Error("ESP32_API_SECRET must contain at least 32 characters. Generate one with: openssl rand -hex 32");
+}
+if (values.ESP32_AP_PASSWORD.length < 8) {
+  throw new Error("ESP32_AP_PASSWORD must contain at least 8 characters for WPA2 soft-AP.");
 }
 function cppString(value = "") {
   return '"' + String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r/g, "").replace(/\n/g, "\\n") + '"';
